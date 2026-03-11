@@ -73,6 +73,12 @@
             <artifactId>org.eclipse.jgit</artifactId>
             <version>5.13.0.202109080827-r</version>
         </dependency>
+        <dependency>
+            <groupId>plus.gaga.middleware</groupId>
+            <artifactId>openai-code-review-sdk</artifactId>
+            <version>1.0</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
