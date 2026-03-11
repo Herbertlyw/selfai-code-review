@@ -29,7 +29,7 @@ jobs:
 
 
       - name: Download openai-code-review-sdk JAR
-        run: wget -O ./libs/openai-code-review-sdk-1.0.jar https://github.com/Herbertlyw/selfai-code-review/releases/download/v1.0/selfai-code-review-sdk-1.0.jar
+        run: wget -O ./libs/selfai-code-review-sdk-1.0.jar https://github.com/Herbertlyw/selfai-code-review/releases/download/v1.0/selfai-code-review-sdk-1.0.jar
 
       - name: Get repository name
         id: repo-name
@@ -55,7 +55,7 @@ jobs:
           echo "Commit message is ${{ env.COMMIT_MESSAGE }}"      
 
       - name: Run Code Review
-        run: java -jar ./libs/openai-code-review-sdk-1.0.jar
+        run: java -jar ./libs/selfai-code-review-sdk-1.0.jar
         env:
 
           GITHUB_REVIEW_LOG_URI: ${{ secrets.CODE_REVIEW_LOG_URI }}
