@@ -1,6 +1,8 @@
 package top.lywovo.sdk.domain.service;
 
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,12 +10,9 @@ import top.lywovo.sdk.infrastructure.git.GitCommand;
 import top.lywovo.sdk.infrastructure.openai.IOpenAI;
 import top.lywovo.sdk.infrastructure.weixin.WeiXin;
 
-
-import java.io.IOException;
-
 public abstract class AbstractOpenAiCodeReviewService implements IOpenAiCodeReviewService {
 
-    private final Logger logger = LoggerFactory.getLogger(plus.gaga.middleware.sdk.domain.service.AbstractOpenAiCodeReviewService.class);
+    private final Logger logger = LoggerFactory.getLogger(AbstractOpenAiCodeReviewService.class);
 
     protected final GitCommand gitCommand;
     protected final IOpenAI openAI;
