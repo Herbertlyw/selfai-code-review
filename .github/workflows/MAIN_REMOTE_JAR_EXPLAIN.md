@@ -1,5 +1,7 @@
 # GitHub Actions 工作流 - main-remote-jar.yml 详细解析
 
+> 这是 v1.0 远程 JAR 方案的历史说明。当前构建和配置请使用 [review.yml](review.yml) 与[仓库首页](../../README.md)。
+
 ## 工作流概述
 
 `main-remote-jar.yml` 是一个 GitHub Actions 工作流配置文件，用于在代码推送到 `master` 分支或创建 pull request 到 `master` 分支时，自动执行代码审查流程。该工作流使用预构建的 SDK JAR 包来执行代码审查，并通过环境变量传递必要的配置信息。

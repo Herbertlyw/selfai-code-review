@@ -4,54 +4,30 @@ import com.alibaba.fastjson2.JSON;
 import top.lywovo.sdk.infrastructure.openai.IOpenAI;
 import top.lywovo.sdk.infrastructure.openai.dto.ChatCompletionRequestDTO;
 import top.lywovo.sdk.infrastructure.openai.dto.ChatCompletionSyncResponseDTO;
-import top.lywovo.sdk.types.utils.BearerTokenUtils;
 
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 public class ChatGLM implements IOpenAI {
+    private final URI endpoint;
+    private final String apiKey;
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-    private final String apiHost;
-    private final String apiKeySecret;
-
-    public ChatGLM(String apiHost, String apiKeySecret) {
-        this.apiHost = apiHost;
-        this.apiKeySecret = apiKeySecret;
+    public ChatGLM(String endpoint, String apiKey) {
+        this.endpoint = URI.create(endpoint);
+        this.apiKey = apiKey;
     }
 
-    @Override
-    public ChatCompletionSyncResponseDTO completions(ChatCompletionRequestDTO requestDTO) throws Exception {
-        String token = BearerTokenUtils.getToken(apiKeySecret);
-
-        URL url = new URL(apiHost);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Authorization", "Bearer " + token);
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)");
-        connection.setDoOutput(true);
-
-        try (OutputStream os = connection.getOutputStream()) {
-            byte[] input = JSON.toJSONString(requestDTO).getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
-        }
-
-        BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-        String inputLine;
-        StringBuilder content = new StringBuilder();
-        while ((inputLine = in.readLine()) != null) {
-            content.append(inputLine);
-        }
-
-        in.close();
-        connection.disconnect();
-
-        return JSON.parseObject(content.toString(), ChatCompletionSyncResponseDTO.class);
+    public ChatCompletionSyncResponseDTO completions(ChatCompletionRequestDTO payload) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(endpoint).timeout(Duration.ofMinutes(2))
+                .header("Authorization", "Bearer " + apiKey).header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(JSON.toJSONString(payload))).build();
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) throw new IOException("模型服务返回 HTTP " + response.statusCode());
+        return JSON.parseObject(response.body(), ChatCompletionSyncResponseDTO.class);
     }
-
 }
