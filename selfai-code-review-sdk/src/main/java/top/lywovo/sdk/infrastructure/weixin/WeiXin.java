@@ -1,8 +1,6 @@
 package top.lywovo.sdk.infrastructure.weixin;
 
 import com.alibaba.fastjson2.JSON;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import top.lywovo.sdk.infrastructure.weixin.dto.TemplateMessageDTO;
 import top.lywovo.sdk.types.utils.WXAccessTokenUtils;
 
@@ -15,7 +13,6 @@ import java.util.Map;
 import java.util.Scanner;
 
 public class WeiXin {
-    private final Logger logger = LoggerFactory.getLogger(WeiXin.class);
 
     private final String appid;
 
@@ -42,6 +39,8 @@ public class WeiXin {
         URL url = new URL(String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken));
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(15000);
         conn.setRequestProperty("Content-Type", "application/json; utf-8");
         conn.setRequestProperty("Accept", "application/json");
         conn.setDoOutput(true);
@@ -53,7 +52,11 @@ public class WeiXin {
 
         try (Scanner scanner = new Scanner(conn.getInputStream(), StandardCharsets.UTF_8.name())) {
             String response = scanner.useDelimiter("\\A").next();
-            logger.info("openai-code-review weixin template message! {}", response);
+            if (!Integer.valueOf(0).equals(JSON.parseObject(response).getInteger("errcode"))) {
+                throw new java.io.IOException("微信模板消息发送失败");
+            }
+        } finally {
+            conn.disconnect();
         }
     }
 

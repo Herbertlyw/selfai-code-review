@@ -1,7 +1,6 @@
 package top.lywovo.sdk.domain.service;
 
 public interface IOpenAiCodeReviewService {
-//author：herbert
-    void exec();
+    void exec() throws Exception;
 
 }

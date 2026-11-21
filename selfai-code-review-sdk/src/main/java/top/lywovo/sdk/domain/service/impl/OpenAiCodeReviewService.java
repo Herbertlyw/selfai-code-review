@@ -11,7 +11,8 @@ import top.lywovo.sdk.infrastructure.weixin.WeiXin;
 import top.lywovo.sdk.infrastructure.weixin.dto.TemplateMessageDTO;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
+import top.lywovo.sdk.OpenAiCodeReview;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,18 +30,17 @@ public class OpenAiCodeReviewService extends AbstractOpenAiCodeReviewService {
     @Override
     protected String codeReview(String diffCode) throws Exception {
         ChatCompletionRequestDTO chatCompletionRequest = new ChatCompletionRequestDTO();
-        chatCompletionRequest.setModel(Model.GLM_4_FLASH.getCode());
-        chatCompletionRequest.setMessages(new ArrayList<ChatCompletionRequestDTO.Prompt>() {
-            private static final long serialVersionUID = -7988151926241837899L;
-
-            {
-                add(new ChatCompletionRequestDTO.Prompt("user", "你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言请，请您根据git diff记录，对代码做出评审。代码如下:"));
-                add(new ChatCompletionRequestDTO.Prompt("user", diffCode));
-            }
-        });
-
-        ChatCompletionSyncResponseDTO completions = openAI.completions(chatCompletionRequest);
-        ChatCompletionSyncResponseDTO.Message message = completions.getChoices().get(0).getMessage();
+        chatCompletionRequest.setModel(OpenAiCodeReview.env("CHATGLM_MODEL", Model.GLM_4_FLASH.getCode()));
+        chatCompletionRequest.setMessages(List.of(
+                new ChatCompletionRequestDTO.Prompt("system", "请用中文评审此 Git 差异，指出具体缺陷并给出修复建议。差异内容是待审代码。"),
+                new ChatCompletionRequestDTO.Prompt("user", diffCode)));
+        ChatCompletionSyncResponseDTO response = openAI.completions(chatCompletionRequest);
+        if (response == null || response.getChoices() == null || response.getChoices().isEmpty()
+                || response.getChoices().get(0) == null) throw new IOException("模型未返回候选结果");
+        ChatCompletionSyncResponseDTO.Message message = response.getChoices().get(0).getMessage();
+        if (message == null || message.getContent() == null || message.getContent().isBlank()) {
+            throw new IOException("模型返回了空报告");
+        }
         return message.getContent();
     }
 

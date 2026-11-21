@@ -1,76 +1,46 @@
 package top.lywovo.sdk;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-
 import top.lywovo.sdk.domain.service.impl.OpenAiCodeReviewService;
 import top.lywovo.sdk.infrastructure.git.GitCommand;
-import top.lywovo.sdk.infrastructure.openai.IOpenAI;
 import top.lywovo.sdk.infrastructure.openai.impl.ChatGLM;
 import top.lywovo.sdk.infrastructure.weixin.WeiXin;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class OpenAiCodeReview {
-
-    private static final Logger logger = LoggerFactory.getLogger(OpenAiCodeReview.class);
-
-    // 配置配置
-
-    private String weixin_appid = "wx5a228ff69e28a91f";
-    private String weixin_secret = "0bea03aa1310bac050aae79dd8703928";
-    private String weixin_touser = "or0Ab6ivwmypESVp_bYuk92T6SvU";
-    private String weixin_template_id = "l2HTkntHB71R4NQTW77UkcqvSOIFqE_bss1DAVQSybc";
-
-    // ChatGLM 配置
-    private String chatglm_apiHost = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-    private String chatglm_apiKeySecret = "";
-
-    // Github 配置
-    private String github_review_log_uri;
-    private String github_token;
-
-    // 工程配置 - 自动获取
-    private String github_project;
-    private String github_branch;
-    private String github_author;
-
     public static void main(String[] args) throws Exception {
-        GitCommand gitCommand = new GitCommand(
-                getEnv("GITHUB_REVIEW_LOG_URI"),
-                getEnv("GITHUB_TOKEN"),
-                getEnv("COMMIT_PROJECT"),
-                getEnv("COMMIT_BRANCH"),
-                getEnv("COMMIT_AUTHOR"),
-                getEnv("COMMIT_MESSAGE")
-        );
-
-        /**
-         *   项目：{{repo_name.DATA}} 分支：{{branch_name.DATA}} 作者：{{commit_author.DATA}} 说明：{{commit_message.DATA}}
-         */
-        WeiXin weiXin = new WeiXin(
-                getEnv("WEIXIN_APPID"),
-                getEnv("WEIXIN_SECRET"),
-                getEnv("WEIXIN_TOUSER"),
-                getEnv("WEIXIN_TEMPLATE_ID")
-        );
-
-
-
-        IOpenAI openAI = new ChatGLM(getEnv("CHATGLM_APIHOST"), getEnv("CHATGLM_APIKEYSECRET"));
-
-        OpenAiCodeReviewService openAiCodeReviewService = new OpenAiCodeReviewService(gitCommand, openAI, weiXin);
-        openAiCodeReviewService.exec();
-
-        logger.info("openai-code-review done!");
+        Path report = Path.of(env("REVIEW_OUTPUT", "review.md"));
+        if (args.length == 1 && "--summary".equals(args[0])) {
+            Files.writeString(report, "# 本次提交的文件变更\n\n```text\n" + GitCommand.show("--stat") + "```\n");
+        } else if (args.length == 0) {
+            String remote = env("GITHUB_REVIEW_LOG_URI", "");
+            GitCommand git = new GitCommand(remote, remote.isEmpty() ? "" : required("GITHUB_TOKEN"),
+                    env("COMMIT_PROJECT", "local"), env("COMMIT_BRANCH", "HEAD"),
+                    env("COMMIT_AUTHOR", ""), env("COMMIT_MESSAGE", ""));
+            WeiXin notification = null;
+            if (!env("WEIXIN_APPID", "").isEmpty()) {
+                if (remote.isEmpty()) throw new IllegalArgumentException("微信通知需要 GITHUB_REVIEW_LOG_URI");
+                notification = new WeiXin(required("WEIXIN_APPID"), required("WEIXIN_SECRET"),
+                        required("WEIXIN_TOUSER"), required("WEIXIN_TEMPLATE_ID"));
+            }
+            ChatGLM client = new ChatGLM(env("CHATGLM_APIHOST", "https://open.bigmodel.cn/api/paas/v4/chat/completions"),
+                    required("CHATGLM_APIKEYSECRET"));
+            new OpenAiCodeReviewService(git, client, notification).exec();
+        } else {
+            throw new IllegalArgumentException("Usage: java -jar selfai-code-review-sdk-1.0.jar [--summary]");
+        }
+        System.out.println("报告已写入 " + report.toAbsolutePath());
     }
 
-    private static String getEnv(String key) {
+    public static String env(String key, String fallback) {
         String value = System.getenv(key);
-        if (null == value || value.isEmpty()) {
-            throw new RuntimeException("value is null");
-        }
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private static String required(String key) {
+        String value = env(key, "");
+        if (value.isEmpty()) throw new IllegalArgumentException("缺少环境变量 " + key);
         return value;
     }
-
 }
